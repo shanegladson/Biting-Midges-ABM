@@ -63,6 +63,7 @@ class Midge(Agent):
         if not prey.istrap:
             return
         else:
+            prey.midgestrapped += 1
             self.death()
 
     # TODO: Implement egg-laying process

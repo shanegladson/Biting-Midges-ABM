@@ -30,7 +30,7 @@ class WorldModel(Model):
             
             self.grid.place_agent(a, (x,y))
 
-        # Collects position data for each midge every day
+        # # TODO: Implement datacollector that can collect data from different agent types (gonna be a pain in my ass)
         self.datacollector = DataCollector(agent_reporters={"x" : "x", "y" : "y"})
 
     def step(self):
