@@ -8,6 +8,6 @@ class Trap(Target):
 	def __init__(self, unique_id, model):
 		super().__init__(unique_id, model, True)
 		self.midgestrapped = 0
-		
+
 	def step(self):
-		return
+		pass
