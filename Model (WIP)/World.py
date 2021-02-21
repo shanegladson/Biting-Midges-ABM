@@ -1,5 +1,5 @@
 from mesa import Model
-from mesa.space import Grid
+from mesa.space import ContinuousSpace
 from mesa.time import BaseScheduler
 from mesa.datacollection import DataCollector
 from mesa.batchrunner import BatchRunner
@@ -20,12 +20,12 @@ class WorldModel(Model):
         self.schedule = BaseScheduler(self)
 
         # Create a grid model with potential for multiple agents on one cell
-        self.grid = Grid(width, height, True)
+        self.grid = ContinuousSpace(width, height, torus=False)
 
         # Adds midges to random location in grid and to queue in scheduler
         for i in range(self.NumMidges):
-            x = self.random.randrange(self.grid.width)
-            y = self.random.randrange(self.grid.height)
+            x = self.random.random()*(self.grid.width)
+            y = self.random.random()*(self.grid.height)
             a = Midge(random.random(), self, x, y)
             self.schedule.add(a)
             
@@ -34,7 +34,7 @@ class WorldModel(Model):
 
         self.trap = Trap(random.random(), self)
         self.schedule.add(self.trap)
-        self.grid.place_agent(self.trap, (1,1))
+        self.grid.place_agent(self.trap, (self.grid.width//2, self.grid.height//2))
 
         # # TODO: Implement datacollector that can collect data from different agent types (gonna be a pain in my ass)
         #self.datacollector = DataCollector(agent_reporters={"x" : "x", "y" : "y"})
@@ -48,5 +48,10 @@ class WorldModel(Model):
         #self.datacollector.collect(self)
 
         for m in self.kill_midges:
-            self.grid._remove_agent(m.pos, m)
+            print("Now killing: " + str(type(m)) + " (id: " + str(m.unique_id) + ") at " + str(m.pos))
+            if m.pos != None:
+                self.grid.remove_agent(m)
             self.schedule.remove(m)
+
+        self.day += 1
+        self.kill_midges = []
