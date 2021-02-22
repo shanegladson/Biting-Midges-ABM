@@ -48,10 +48,10 @@ class WorldModel(Model):
         #self.datacollector.collect(self)
 
         for m in self.kill_midges:
-            print("Now killing: " + str(type(m)) + " (id: " + str(m.unique_id) + ") at " + str(m.pos))
+            print("Now killing: " + str(type(m)) + " (id: " + str(m.unique_id) + ")")
             if m.pos != None:
                 self.grid.remove_agent(m)
             self.schedule.remove(m)
-
+        self.grid.place_agent(self.trap, self.trap.pos)    
         self.day += 1
         self.kill_midges = []

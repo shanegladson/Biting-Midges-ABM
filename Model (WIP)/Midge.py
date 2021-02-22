@@ -49,7 +49,9 @@ class Midge(Agent):
 
         # Daily probability of survival calculation (uniform distribution), calculated at end of step function only if midge is still alive
         if not self.dead and random.random() > self.dps:
+            print("Killing midge " + str(self.unique_id) + " by dps")
             self.death()
+            return
 
     # Random walk function, chooses randomly from available cells in Moore neighborhood
     def randomwalk(self):
@@ -77,12 +79,11 @@ class Midge(Agent):
             self.timesincefed = 0
             return
         elif type(prey) == Trap.Trap:
-            print("Midge found trap")
+            print("Midge " + str(self.unique_id) + " found trap")
             prey.trapmidge()
             print("trapmidge incremented")
             self.death()
             print("Midge killed")
-            self.model.grid.place_agent(prey, prey.pos)
 
     # TODO: Implement egg-laying process
     def layeggs(self):
@@ -97,5 +98,5 @@ class Midge(Agent):
         print("In death function")
         # Add midges to list which will kill them all at the end of the day
         self.model.kill_midges.append(self)
-        print("Appended midge to kill list")
+        print("Appended midge " + str(self.unique_id) + " to kill list")
         self.dead = True
