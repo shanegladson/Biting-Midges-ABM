@@ -5,13 +5,23 @@ from mesa.datacollection import DataCollector
 from mesa.batchrunner import BatchRunner
 import random
 import numpy as np
-from Midge import Midge
-from Trap import Trap
+import Midge
+import Trap
+import Deer
+import Egg
+
 
 class WorldModel(Model):
-    def __init__(self, NumMidges, width=100, height=100):
+    def __init__(self, NumMidges, NumTraps, NumDeer, width=100, height=100):
         # Starting number of midges
         self.NumMidges = NumMidges
+        self.NumTraps = NumTraps
+        self.NumDeer = NumDeer
+        self.idcounter = 0
+
+        self.midges = []
+        self.traps = []
+        self.deer = []
 
         # Time (days) since simulation has begun
         self.day = 0
@@ -24,34 +34,67 @@ class WorldModel(Model):
 
         # Adds midges to random location in grid and to queue in scheduler
         for i in range(self.NumMidges):
-            x = self.random.random()*(self.grid.width)
-            y = self.random.random()*(self.grid.height)
-            a = Midge(random.random(), self, x, y)
+            x = self.random.random() * (self.grid.width)
+            y = self.random.random() * (self.grid.height)
+            a = Midge.Midge(self.idcounter, self)
             self.schedule.add(a)
-            
-            self.grid.place_agent(a, (x,y))
 
+            self.grid.place_agent(a, (x, y))
 
-        self.trap = Trap(random.random(), self)
-        self.schedule.add(self.trap)
-        self.grid.place_agent(self.trap, (self.grid.width//2, self.grid.height//2))
+            self.idcounter += 1
+
+        # Adds some eggs to the simulation as well, just to even out the population variability
+        for i in range(250):
+            x = self.random.random() * (self.grid.width)
+            y = self.random.random() * (self.grid.height)
+            a = Egg.Egg(self.idcounter, self)
+            self.schedule.add(a)
+
+            self.grid.place_agent(a, (x, y))
+
+            self.idcounter += 1
+
+        # Adds traps to random locations in the grid and to queue in scheduler
+        for i in range(self.NumTraps):
+            x = self.random.random() * (self.grid.width)
+            y = self.random.random() * (self.grid.height)
+            a = Trap.Trap(self.idcounter, self)
+            self.schedule.add(a)
+
+            self.grid.place_agent(a, (x, y))
+
+            self.idcounter += 1
+
+        # Adds deer to random locations in the grid and to queue in scheduler
+        for i in range(self.NumDeer):
+            x = self.random.random() * (self.grid.width)
+            y = self.random.random() * (self.grid.height)
+            a = Deer.Deer(self.idcounter, self)
+            self.schedule.add(a)
+
+            self.grid.place_agent(a, (x, y))
+
+            self.idcounter += 1
 
         # # TODO: Implement datacollector that can collect data from different agent types (gonna be a pain in my ass)
-        #self.datacollector = DataCollector(agent_reporters={"x" : "x", "y" : "y"})
+        self.datacollector = DataCollector(model_reporters={"MidgePop" : "NumMidges"})
 
-        self.kill_midges = []
 
     def step(self):
-        self.kill_midges = []
 
+        self.datacollector.collect(self)
+
+        # World step function. Steps each agent as well as increments the day clock
         self.schedule.step()
-        #self.datacollector.collect(self)
 
-        for m in self.kill_midges:
-            print("Now killing: " + str(type(m)) + " (id: " + str(m.unique_id) + ")")
-            if m.pos != None:
-                self.grid.remove_agent(m)
-            self.schedule.remove(m)
-        self.grid.place_agent(self.trap, self.trap.pos)    
         self.day += 1
-        self.kill_midges = []
+
+        self.midges = [i for i in self.schedule.agents if type(i) == Midge.Midge]
+        self.NumMidges = len(self.midges)
+        self.traps = [i for i in self.schedule.agents if type(i) == Trap.Trap]
+        self.deer = [i for i in self.schedule.agents if type(i) == Deer.Deer]
+
+        print("There are " + str(len(self.midges)) + " midges left.")
+
+def MidgePop(midges):
+    return len(midges)

@@ -4,37 +4,40 @@ import random
 import numpy as np
 import Target
 import Trap
+import Deer
+import Egg
+
 
 class Midge(Agent):
-    dps = 0.7 # Daily probability of survival. Applied every day of midge's life (Maybe model with sine wave?)
-    avgeggbatch = 100 # Average number of eggs laid per oviposition
-    gtrclength = 14 # Number of days in the gonotrophpic cycle
-    senserange = 1 # Range at which midges can detect CO2 emitting from source (deer or trap) in grid tiles
-    fov = 2*np.pi # Field of View which the midge chooses from to move
-    step_length = 5 # Distance traveled per step
+    dps = 0.75  # Daily probability of survival. Applied every day of midge's life (Maybe model with sine wave?)
+    avgeggbatch = 100  # Average number of eggs laid per oviposition
+    gtrclength = 14  # Number of days in the gonotrophpic cycle
+    senserange = 5  # Range at which midges can detect CO2 emitting from source (deer or trap) in grid tiles
+    fov = 2 * np.pi  # Field of View which the midge chooses from to move
+    step_length = 2  # Distance traveled per step
 
-    def __init__(self, unique_id, model, x, y):
+    def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
-        self.fed = False # True if the midge has taken a bloodmeal recently, False otherwise
-        self.timesincefed = 0 # Time in days since the midge has fed, will only increase if the midge has fed at all, resets to 0 after another bloodmeal
+        self.fed = False  # True if the midge has taken a bloodmeal recently, False otherwise
+        self.timesincefed = 0  # Time in days since the midge has fed, will only increase if the midge has fed at all, resets to 0 after another bloodmeal
         self.previous_angle = 0
-        self.dead = False # Toggles when midge has either died or entered trap
-    def step(self):
+        self.dead = False  # Toggles when midge has either died or entered trap
+        self.hasbtv = False
 
-        if not self.fed:
-            # Get list of agents in nearby "sensitivity" radius
-            neighbors = self.model.grid.get_neighbors(self.pos, radius=Midge.senserange)
-            
+    def step(self):
+        # Get list of targets in nearby "sensitivity" radius
+        targets = [a for a in self.model.grid.get_neighbors(self.pos, radius=Midge.senserange, include_center=True) if
+                   issubclass(type(a), Target.Target)]
+
+        if not self.fed and len(targets) != 0:
+
             # Iterate through neighbors and filter for Target agent
             # TODO: Implement decision-making process for each animal
-            if len(neighbors) > 1:
-	            for n in neighbors:
-	                if issubclass(type(n), Target.Target):
-	                    # Navigate to bloodmeal source
-	                    self.biasedwalk(n.pos)
-	                    self.feed(n)
-            else:
-	            self.randomwalk()
+            n = random.choice(targets)
+            # Navigate to bloodmeal source
+            self.biasedwalk(n.pos)
+            if n.pos == self.pos:
+                self.feed(n)
 
         # If days since last bloodmeal >= gonotrophic cycle, begin oviposition
         elif self.timesincefed >= Midge.gtrclength:
@@ -46,57 +49,69 @@ class Midge(Agent):
             self.timesincefed += 1
             self.randomwalk()
 
-
         # Daily probability of survival calculation (uniform distribution), calculated at end of step function only if midge is still alive
         if not self.dead and random.random() > self.dps:
-            print("Killing midge " + str(self.unique_id) + " by dps")
+            # print("Killing midge " + str(self.unique_id) + " by DPS")
             self.death()
             return
 
-    # Random walk function, chooses randomly from available cells in Moore neighborhood
+    # Random walk function, chooses randomly from available cells
     def randomwalk(self):
-        new_position = (0,0)
-        angle = 0
+        new_position, angle = self.randomposition()
+
         while self.model.grid.out_of_bounds(new_position):
-            new_position, angle = self.new_position()
-            self.model.grid.move_agent(self, new_position)
+            new_position, angle = self.randomposition()
+
+        self.model.grid.move_agent(self, new_position)
 
         self.previous_angle = angle
 
-    def new_position(self):
-        angle = self.previous_angle + random.uniform(-self.fov/2, self.fov/2)
-        new_position = (self.pos[0]+self.step_length*np.cos(angle), self.pos[1]+self.step_length*np.sin(angle))
+    # New position function to use correlated random walk, can adjust fov in the future
+    def randomposition(self):
+        angle = self.previous_angle + random.uniform(-self.fov / 2, self.fov / 2)
+        new_position = (self.pos[0] + self.step_length * np.cos(angle), self.pos[1] + self.step_length * np.sin(angle))
         return new_position, angle
- 
-    # TODO: implement biased walk method when attracted to CO2 source (emission point)
+
+    # Navigates to the position given, if not within range then as close as possible
     def biasedwalk(self, pos):
-        self.model.grid.move_agent(self, pos)
+        if self.model.grid.get_distance(self.pos, pos) <= Midge.step_length:
+            self.model.grid.move_agent(self, pos)
 
-    # TODO: Implement bloodfeeding of other animals/trap
+        else:
+            # Get direction of desired position as a tuple
+            heading = self.model.grid.get_heading(self.pos, pos)
+
+            # Compute the angle at which to fly
+            dx, dy = heading
+            angle = np.arctan2(dy, dx)
+
+            # Calculate new position based on angle and step length
+            new_position = (self.pos[0] + self.step_length * np.cos(angle), self.pos[1] + self.step_length * np.sin(angle))
+
+            # Move midge to new position
+            self.model.grid.move_agent(self, new_position)
+
+    # TODO: Expand on bloodfeeding of other animals
+
     def feed(self, prey):
-        if not prey.istrap:
-            self.fed = True
-            self.timesincefed = 0
-            return
-        elif type(prey) == Trap.Trap:
-            print("Midge " + str(self.unique_id) + " found trap")
-            prey.trapmidge()
-            print("trapmidge incremented")
-            self.death()
-            print("Midge killed")
+        # Activates the feed function for the prey agent, passes itself as the argument
+        prey.feed(self)
+        return
 
-    # TODO: Implement egg-laying process
+    # Function that lays eggs, which will then incubate and develop into adults in the same location
     def layeggs(self):
-        # Adds avgeggbatch number of eggs to the model (TODO: implement larval stage and distribution of batch sizes)
-        for i in range(Midge.avgeggbatch):
+        # Adds normal distribution with avgeggbatch mean number of eggs to the model (TODO: implement larval stage and distribution of batch sizes)
+        batchsize = abs(int(random.normalvariate(Midge.avgeggbatch, 10)))
+        for i in range(batchsize):
             # Each offspring has same starting location as egg-laying location
-            a = Midge(random.random(), self.model, self.pos[0], self.pos[1])
+            a = Egg.Egg(self.model.idcounter, self.model)
             self.model.schedule.add(a)
             self.model.grid.place_agent(a, self.pos)
 
+            self.model.idcounter += 1
+
+    # Death function that removes the midge from the grid as well as deletes it from the scheduler
     def death(self):
-        print("In death function")
-        # Add midges to list which will kill them all at the end of the day
-        self.model.kill_midges.append(self)
-        print("Appended midge " + str(self.unique_id) + " to kill list")
+        self.model.grid.remove_agent(self)
+        self.model.schedule.remove(self)
         self.dead = True
