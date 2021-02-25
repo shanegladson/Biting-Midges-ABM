@@ -26,14 +26,14 @@ class Midge(Agent):
 
     def step(self):
         # Get list of targets in nearby "sensitivity" radius
-        targets = [a for a in self.model.grid.get_neighbors(self.pos, radius=Midge.senserange, include_center=True) if
-                   issubclass(type(a), Target.Target)]
+        # TODO: Optimize by preloading a list of targets, and then will just select from a certain radius instead of 20K midges searching each step
+        nearbytargets = [i for i in self.model.targets if self.model.grid.get_distance(self.pos, i.pos) <= Midge.senserange]
 
-        if not self.fed and len(targets) != 0:
+        if not self.fed and len(nearbytargets) != 0:
 
             # Iterate through neighbors and filter for Target agent
             # TODO: Implement decision-making process for each animal
-            n = random.choice(targets)
+            n = random.choice(nearbytargets)
             # Navigate to bloodmeal source
             self.biasedwalk(n.pos)
             if n.pos == self.pos:
@@ -101,7 +101,8 @@ class Midge(Agent):
     # Function that lays eggs, which will then incubate and develop into adults in the same location
     def layeggs(self):
         # Adds normal distribution with avgeggbatch mean number of eggs to the model (TODO: implement larval stage and distribution of batch sizes)
-        batchsize = abs(int(random.normalvariate(Midge.avgeggbatch, 10)))
+        # TODO: Optimize by doing total survival calc in one go
+        batchsize = abs(int(0.5*random.normalvariate(Midge.avgeggbatch, 10)))
         for i in range(batchsize):
             # Each offspring has same starting location as egg-laying location
             a = Egg.Egg(self.model.idcounter, self.model)

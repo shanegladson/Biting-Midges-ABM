@@ -21,4 +21,5 @@ class Deer(Target):
         midge.timesincefed = 0
 
     def step(self):
-        print("By day " + str(self.model.day) + ", deer " + str(self.unique_id) + " was bitten " + str(self.numbites) + " times.")
+        # print("By day " + str(self.model.day) + ", deer " + str(self.unique_id) + " was bitten " + str(self.numbites) + " times.")
+        return

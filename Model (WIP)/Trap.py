@@ -19,4 +19,5 @@ class Trap(Target):
 
     def step(self):
         # print("There are " + str(len(self.model.grid.get_neighbors(self.pos, radius=3, include_center=False))) + " neighbors of the trap at " + str(self.pos))
-        print("On day " + str(self.model.day) + ", there were " + str(self.midgestrapped) + " midges trapped.")
+        # print("On day " + str(self.model.day) + ", there were " + str(self.midgestrapped) + " midges trapped.")
+        return

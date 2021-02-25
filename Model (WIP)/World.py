@@ -9,6 +9,7 @@ import Midge
 import Trap
 import Deer
 import Egg
+import itertools
 
 
 class WorldModel(Model):
@@ -76,8 +77,14 @@ class WorldModel(Model):
 
             self.idcounter += 1
 
-        # # TODO: Implement datacollector that can collect data from different agent types (gonna be a pain in my ass)
-        self.datacollector = DataCollector(model_reporters={"MidgePop" : "NumMidges"})
+        self.traps = [i for i in self.schedule.agents if type(i) == Trap.Trap]
+        self.deer = [i for i in self.schedule.agents if type(i) == Deer.Deer]
+        self.targets = combinelists(self.traps, self.deer)
+        self.deerbites = 0
+
+        # TODO: Implement datacollector that can collect data from different agent types (gonna be a pain in my ass)
+        self.datacollector = DataCollector(model_reporters={"MidgePop" : "NumMidges",
+                                                            "TotalDeerBites" : "deerbites"})
 
 
     def step(self):
@@ -91,10 +98,15 @@ class WorldModel(Model):
 
         self.midges = [i for i in self.schedule.agents if type(i) == Midge.Midge]
         self.NumMidges = len(self.midges)
-        self.traps = [i for i in self.schedule.agents if type(i) == Trap.Trap]
-        self.deer = [i for i in self.schedule.agents if type(i) == Deer.Deer]
+        self.deerbites = sum([d.numbites for d in self.deer])
 
-        print("There are " + str(len(self.midges)) + " midges left.")
+        print("On day " + str(self.day) + " there are " + str(self.NumMidges) + " midges left.")
 
 def MidgePop(midges):
     return len(midges)
+
+def combinelists(list1, list2):
+    l = []
+    l.extend(list1)
+    l.extend(list2)
+    return l
