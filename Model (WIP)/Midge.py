@@ -2,21 +2,21 @@ from mesa import Agent
 from mesa.datacollection import DataCollector
 import random
 import numpy as np
-import Target
-import Trap
-import Deer
 import Egg
+import subprocess
+import math
+import csv
 
 
 class Midge(Agent):
-    dps = 0.75  # Daily probability of survival. Applied every day of midge's life (Maybe model with sine wave?)
-    avgeggbatch = 100  # Average number of eggs laid per oviposition
+    dps = 0.60  # Daily probability of survival. Applied every day of midge's life (Maybe model with sine wave?)
+    avgeggbatch = 80  # Average number of eggs laid per oviposition
     gtrclength = 14  # Number of days in the gonotrophpic cycle
-    senserange = 5  # Range at which midges can detect CO2 emitting from source (deer or trap) in grid tiles
-    fov = 2 * np.pi  # Field of View which the midge chooses from to move
-    step_length = 2  # Distance traveled per step
+    senserange = 10  # Range at which midges can detect CO2 emitting from source (deer or trap) in grid tiles
+    fov = 2 * math.pi  # Field of View which the midge chooses from to move
+    step_length = 5  # Distance traveled per step
 
-    def __init__(self, unique_id, model):
+    def __init__(self, unique_id, model) -> None:
         super().__init__(unique_id, model)
         self.fed = False  # True if the midge has taken a bloodmeal recently, False otherwise
         self.timesincefed = 0  # Time in days since the midge has fed, will only increase if the midge has fed at all, resets to 0 after another bloodmeal
@@ -24,7 +24,10 @@ class Midge(Agent):
         self.dead = False  # Toggles when midge has either died or entered trap
         self.hasbtv = False
 
-    def step(self):
+    def step(self) -> None:
+
+        # print(self.pos, self.getcelltype())
+
         # Get list of targets in nearby "sensitivity" radius
         # TODO: Optimize by preloading a list of targets, and then will just select from a certain radius instead of 20K midges searching each step
         nearbytargets = [i for i in self.model.targets if self.model.grid.get_distance(self.pos, i.pos) <= Midge.senserange]
@@ -56,7 +59,7 @@ class Midge(Agent):
             return
 
     # Random walk function, chooses randomly from available cells
-    def randomwalk(self):
+    def randomwalk(self) -> None:
         new_position, angle = self.randomposition()
 
         while self.model.grid.out_of_bounds(new_position):
@@ -67,13 +70,13 @@ class Midge(Agent):
         self.previous_angle = angle
 
     # New position function to use correlated random walk, can adjust fov in the future
-    def randomposition(self):
+    def randomposition(self) -> (tuple, float):
         angle = self.previous_angle + random.uniform(-self.fov / 2, self.fov / 2)
-        new_position = (self.pos[0] + self.step_length * np.cos(angle), self.pos[1] + self.step_length * np.sin(angle))
+        new_position = (self.pos[0] + self.step_length * math.cos(angle), self.pos[1] + self.step_length * math.sin(angle))
         return new_position, angle
 
     # Navigates to the position given, if not within range then as close as possible
-    def biasedwalk(self, pos):
+    def biasedwalk(self, pos) -> None:
         if self.model.grid.get_distance(self.pos, pos) <= Midge.step_length:
             self.model.grid.move_agent(self, pos)
 
@@ -93,13 +96,13 @@ class Midge(Agent):
 
     # TODO: Expand on bloodfeeding of other animals
 
-    def feed(self, prey):
+    def feed(self, prey) -> None:
         # Activates the feed function for the prey agent, passes itself as the argument
         prey.feed(self)
         return
 
     # Function that lays eggs, which will then incubate and develop into adults in the same location
-    def layeggs(self):
+    def layeggs(self) -> None:
         # Adds normal distribution with avgeggbatch mean number of eggs to the model (TODO: implement larval stage and distribution of batch sizes)
         # TODO: Optimize by doing total survival calc in one go
         batchsize = abs(int(0.5*random.normalvariate(Midge.avgeggbatch, 10)))
@@ -112,7 +115,22 @@ class Midge(Agent):
             self.model.idcounter += 1
 
     # Death function that removes the midge from the grid as well as deletes it from the scheduler
-    def death(self):
+    def death(self) -> None:
         self.model.grid.remove_agent(self)
         self.model.schedule.remove(self)
         self.dead = True
+
+    def getcelltype(self) -> str:
+        with open(self.model.mapfile) as csvfile:
+            csvreader = csv.reader(csvfile, delimiter=',')
+            for l in csvreader:
+                if l[0] == str(int(self.pos[0])) and l[1] == str(int(self.pos[1])):
+                    return l[2]
+            return 'lightgreen'
+
+        # argument = "GoCSV.exe %d %d" % (int(self.pos[0]), int(self.pos[1]))
+        # output = subprocess.check_output(argument, shell=False).decode("utf-8")
+        # if len(output) > 0:
+        #     return output
+        # else:
+        #     return 'lightgreen'

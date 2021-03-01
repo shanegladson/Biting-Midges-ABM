@@ -9,16 +9,19 @@ import Midge
 import Trap
 import Deer
 import Egg
+import BiomeCell
+import csv
 import itertools
 
 
 class WorldModel(Model):
-    def __init__(self, NumMidges, NumTraps, NumDeer, width=100, height=100):
+    def __init__(self, NumMidges, NumTraps, NumDeer, width=100, height=100, mapfile=None):
         # Starting number of midges
         self.NumMidges = NumMidges
         self.NumTraps = NumTraps
         self.NumDeer = NumDeer
         self.idcounter = 0
+        self.mapfile = mapfile
 
         self.midges = []
         self.traps = []
@@ -35,8 +38,8 @@ class WorldModel(Model):
 
         # Adds midges to random location in grid and to queue in scheduler
         for i in range(self.NumMidges):
-            x = self.random.random() * (self.grid.width)
-            y = self.random.random() * (self.grid.height)
+            x = self.random.random() * self.grid.width
+            y = self.random.random() * self.grid.height
             a = Midge.Midge(self.idcounter, self)
             self.schedule.add(a)
 
@@ -100,7 +103,8 @@ class WorldModel(Model):
         self.NumMidges = len(self.midges)
         self.deerbites = sum([d.numbites for d in self.deer])
 
-        print("On day " + str(self.day) + " there are " + str(self.NumMidges) + " midges left.")
+        # print("On day " + str(self.day) + " there are " + str(self.NumMidges) + " midges left.")
+
 
 def MidgePop(midges):
     return len(midges)
